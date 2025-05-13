@@ -94,18 +94,12 @@ resource "aws_iam_role" "SecretsHubOnboardingRole" {
       Statement = [{
         Effect = "Allow",
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          AWS = "${var.CyberArkSecretsHubRoleARN}"
         },
-        Action = "sts:AssumeRole",
-        "Condition":{
-            "ArnEquals": {
-                "aws:PrivnicpalArn": "${var.CyberArkSecretsHubRoleARN}"
-            }
-        }
+        Action = "sts:AssumeRole"
       }]
     }
   )
-
 }
 
 resource "aws_iam_role_policy_attachment" "cyberark_secrets_hub_policy_attachment" {

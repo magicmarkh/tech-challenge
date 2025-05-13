@@ -12,7 +12,6 @@ variable "CyberArkSecretsHubRoleARN" {
 variable "SecretsManagerRegion" {
   description = "The AWS Secrets Manager Account region that the Secrets Hub will have access to"
   type        = string
-  default = "us-east-1"
 }
 
 variable "AllowSecretExtendedAccess" {
