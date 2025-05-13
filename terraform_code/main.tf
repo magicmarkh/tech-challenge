@@ -8,3 +8,7 @@ module "users_and_roles" {
   source = "./modules/user_and_roles"
   region = var.region
 }
+
+module "sca_target_role" {
+  source = "./modules/sca_target_role"
+}
