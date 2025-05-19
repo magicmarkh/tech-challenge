@@ -10,8 +10,8 @@ resource "aws_iam_user" "candidate_user" {
 }
 
 resource "aws_iam_user_login_profile" "console_user_login" {
-  user = aws_iam_user.candidate_user.name
-  password_length = 24
+  user                    = aws_iam_user.candidate_user.name
+  password_length         = 24
   password_reset_required = true
 }
 
@@ -23,9 +23,9 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Sid    = "AllowAllActionsWithMFA",
-        Effect = "Allow",
-        Action = "*",
+        Sid      = "AllowAllActionsWithMFA",
+        Effect   = "Allow",
+        Action   = "*",
         Resource = "*",
         Condition = {
           Bool = {
@@ -34,9 +34,9 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
         }
       },
       {
-        Sid    = "DenyAllWithoutMFA",
-        Effect = "Deny",
-        Action = "*",
+        Sid      = "DenyAllWithoutMFA",
+        Effect   = "Deny",
+        Action   = "*",
         Resource = "*",
         Condition = {
           BoolIfExists = {
@@ -198,7 +198,15 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "cloudformation:DeleteStackSet",
           "cloudformation:DescribeStackSet"
         ],
-        Resource = "*"
+        Resource = "*",
+        Condition = {
+          StringLike = {
+            "cloudformation:StackName" = [
+              "cem-stack-*",
+              "candidate-stack"
+            ]
+          }
+        }
       },
       {
         Effect = "Allow",
@@ -212,7 +220,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
 }
 
 resource "aws_iam_user_policy_attachment" "attach_cyberark_sca_candidate_policy" {
-  user = aws_iam_user.candidate_user.name
+  user       = aws_iam_user.candidate_user.name
   policy_arn = aws_iam_policy.cyberark_sca_candidate_policy.arn
 }
 
@@ -256,7 +264,7 @@ resource "aws_iam_policy" "ec2_policy" {
 }
 
 resource "aws_iam_user_policy_attachment" "attach_ec2_policy" {
-  user = aws_iam_user.candidate_user.name
+  user       = aws_iam_user.candidate_user.name
   policy_arn = aws_iam_policy.ec2_policy.arn
 }
 
@@ -312,7 +320,7 @@ resource "aws_iam_policy" "rds_policy" {
 }
 
 resource "aws_iam_user_policy_attachment" "attach_cyberark_rds_candidate_policy" {
-  user = aws_iam_user.candidate_user.name
+  user       = aws_iam_user.candidate_user.name
   policy_arn = aws_iam_policy.rds_policy.arn
 }
 
@@ -379,6 +387,6 @@ resource "aws_iam_policy" "aws_sm_policy" {
 }
 
 resource "aws_iam_user_policy_attachment" "attach_cyberark_aws_sm_candidate_policy" {
-  user = aws_iam_user.candidate_user.name
+  user       = aws_iam_user.candidate_user.name
   policy_arn = aws_iam_policy.aws_sm_policy.arn
 }
