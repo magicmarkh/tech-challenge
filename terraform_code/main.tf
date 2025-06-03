@@ -12,3 +12,8 @@ module "users_and_roles" {
 module "sca_target_role" {
   source = "./modules/sca_target_role"
 }
+
+module "vpc" {
+  source = "./modules/vpc"
+  region = var.region
+}
