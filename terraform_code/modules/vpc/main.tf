@@ -37,6 +37,18 @@ resource "aws_eip" "nat_eip" {
   }
 }
 
+# NAT Gateway
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.private.id
+
+  tags = {
+    Name = "tech-challenge-nat-gateway"
+  }
+
+  depends_on = [aws_internet_gateway.igw]
+}
+
 # Route Table for Private Subnet
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
