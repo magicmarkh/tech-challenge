@@ -390,3 +390,18 @@ resource "aws_iam_user_policy_attachment" "attach_cyberark_aws_sm_candidate_poli
   user       = aws_iam_user.candidate_user.name
   policy_arn = aws_iam_policy.aws_sm_policy.arn
 }
+
+resource "aws_iam_user_policy_attachment" "allow_user_password_change" {
+  user       = aws_iam_user.candidate_user.name
+  policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
+}
+
+
+resource "aws_iam_account_password_policy" "default" {
+  minimum_password_length        = 14
+  require_symbols                = true
+  require_numbers                = true
+  require_uppercase_characters  = true
+  require_lowercase_characters  = true
+  allow_users_to_change_password = true
+}
