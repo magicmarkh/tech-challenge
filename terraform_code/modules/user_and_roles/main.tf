@@ -23,9 +23,21 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Sid      = "AllowAllActionsWithMFA",
-        Effect   = "Allow",
-        Action   = "*",
+        Sid    = "AllowChangeOwnPasswordWithoutMFA",
+        Effect = "Allow",
+        Action = [
+          "iam:ChangePassword",
+          "iam:GetAccountPasswordPolicy"
+        ],
+        Resource = [
+          "arn:aws:iam::*:user/${"$"}{aws:username}",
+          "arn:aws:iam::*:user/*/${"$"}{aws:username}"
+        ]
+      },
+      {
+        Sid    = "AllowAllActionsWithMFA",
+        Effect = "Allow",
+        Action = "*",
         Resource = "*",
         Condition = {
           Bool = {
@@ -34,9 +46,9 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
         }
       },
       {
-        Sid      = "DenyAllWithoutMFA",
-        Effect   = "Deny",
-        Action   = "*",
+        Sid    = "DenyAllWithoutMFA",
+        Effect = "Deny",
+        Action = "*",
         Resource = "*",
         Condition = {
           BoolIfExists = {
@@ -47,7 +59,6 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     ]
   })
 }
-
 
 
 resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
