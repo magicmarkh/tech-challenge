@@ -258,10 +258,6 @@ resource "aws_iam_policy" "ec2_policy" {
           Resource = "*"
           Condition = {
             StringNotEqualsIfExists = {
-              "ec2:ImageId" = [
-                "ami-0f88e80871fd81e91",
-                "ami-0c798d4b81e585f36"
-              ],
               "ec2:InstanceType" = [
                 "t3a.medium",
                 "t3a.large"
