@@ -96,6 +96,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "iam:GetRolePolicy",
           "iam:ListAttachedRolePolicies",
           "iam:ListMFADevices",
+          "iam:ListInstanceProfilesForRole",
           "iam:ListPolicies",
           "iam:ListRolePolicies",
           "iam:ListRoles",
