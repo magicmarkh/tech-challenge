@@ -334,6 +334,19 @@ resource "aws_iam_policy" "rds_policy" {
             "rds:DatabaseClass" = "db.t4g.micro"
           }
         }
+      },
+
+      # 4) Allow RDS to create its service‐linked role
+      {
+        Sid    = "AllowCreateRDSServiceLinkedRole",
+        Effect = "Allow",
+        Action = "iam:CreateServiceLinkedRole",
+        Resource = "*",
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "rds.amazonaws.com"
+          }
+        }
       }
     ]
   })
