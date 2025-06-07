@@ -224,15 +224,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "cloudformation:DeleteStackSet",
           "cloudformation:DescribeStackSet"
         ],
-        Resource = "*",
-        Condition = {
-          StringLike = {
-            "cloudformation:StackName" = [
-              "cem-stack-*",
-              "candidate-stack"
-            ]
-          }
-        }
+        Resource = "*"
       },
       {
         Effect = "Allow",
