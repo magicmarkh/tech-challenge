@@ -250,16 +250,21 @@ resource "aws_iam_policy" "ec2_policy" {
     Version = "2012-10-17",
     Statement = [
 
-      # 1) Still allow absolutely everything in EC2
+      #allow everything in EC2
       {
         Sid      = "AllowAllEC2Actions",
         Effect   = "Allow",
         Action   = "ec2:*",
         Resource = "*"
       },
-
-      # 2) But for RunInstances, DENY it ONLY on instance & image ARNs
-      #    if the instance type isn't one of your small sizes:
+      #allow cloudwatch alarms
+      {
+        Sid      = "AllowCloudwatchAlarm",
+        Effect   = "Allow",
+        Action   = "cloudwatch:DescribeAlarms",
+        Resource = "*"
+      },
+     #require samll image sizes
       {
         Sid    = "DenyRunInstancesUnlessSmall",
         Effect = "Deny",
