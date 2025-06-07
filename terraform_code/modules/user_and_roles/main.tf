@@ -87,6 +87,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
         Effect = "Allow",
         Action = [
           "access-analyzer:ValidatePolicy",
+          "iam:CreateServiceLinkedRole",
           "iam:GenerateCredentialReport",
           "iam:GetAccountAuthorizationDetails",
           "iam:GetCredentialReport",
