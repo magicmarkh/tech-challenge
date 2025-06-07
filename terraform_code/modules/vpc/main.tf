@@ -1,7 +1,3 @@
-provider "aws" {
-  region = var.region
-}
-
 data "aws_caller_identity" "current" {}
 
 # Grab the first two AZs in the region
@@ -62,7 +58,7 @@ resource "aws_route_table" "private" {
 # carve two /24s out of the VPC: one per AZ
 locals {
   private_subnet_specs = [
-    for idx, az in data.aws_availability_zones.available.names[0:2] : {
+    for idx, az in slice(data.aws_availability_zones.available.names, 0, 2) : {
       az   = az
       cidr = cidrsubnet(aws_vpc.main.cidr_block, 8, idx)
     }
