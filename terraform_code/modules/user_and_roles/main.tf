@@ -360,16 +360,28 @@ resource "aws_iam_user_policy_attachment" "attach_cyberark_rds_candidate_policy"
 
 resource "aws_iam_policy" "aws_sm_policy" {
   name        = "CyberArkCandidateAWSSMPolicy"
-  description = "Least-privilege policy for full Secrets Manager administration in the account"
+  description = "Least-privilege policy for full Secrets Manager administration"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      # Secrets Manager lifecycle management and access
+
+      # 0) Allow creating new secrets (must be "*" since the secret ARN doesn't exist yet)
+      {
+        Sid      = "AllowCreateSecret",
+        Effect   = "Allow",
+        Action   = "secretsmanager:CreateSecret",
+        Resource = "*",
+        # Optional condition to restrict by name prefix:
+        # Condition = {
+        #   StringLike = { "secretsmanager:Name" = "tech-challenge/*" }
+        # }
+      },
+
+      # 1) Now lock down all lifecycle operations to your account’s secret ARNs
       {
         Effect = "Allow",
         Action = [
-          "secretsmanager:CreateSecret",
           "secretsmanager:PutSecretValue",
           "secretsmanager:GetSecretValue",
           "secretsmanager:UpdateSecret",
@@ -378,7 +390,6 @@ resource "aws_iam_policy" "aws_sm_policy" {
           "secretsmanager:DescribeSecret",
           "secretsmanager:ListSecrets",
           "secretsmanager:GetRandomPassword",
-          "secretsmanager:GetSecretValue",
           "secretsmanager:ReplicateSecretToRegions",
           "secretsmanager:CancelRotateSecret",
           "secretsmanager:RotateSecret"
@@ -386,7 +397,7 @@ resource "aws_iam_policy" "aws_sm_policy" {
         Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
       },
 
-      # Resource policy management (for controlling access to secrets)
+      # 2) Resource policy management
       {
         Effect = "Allow",
         Action = [
@@ -397,7 +408,7 @@ resource "aws_iam_policy" "aws_sm_policy" {
         Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
       },
 
-      # Tagging actions
+      # 3) Tagging
       {
         Effect = "Allow",
         Action = [
@@ -407,7 +418,7 @@ resource "aws_iam_policy" "aws_sm_policy" {
         Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
       },
 
-      # Supporting KMS actions (only required if secrets are encrypted with CMKs)
+      # 4) KMS support
       {
         Effect = "Allow",
         Action = [
@@ -419,6 +430,7 @@ resource "aws_iam_policy" "aws_sm_policy" {
     ]
   })
 }
+
 
 resource "aws_iam_user_policy_attachment" "attach_cyberark_aws_sm_candidate_policy" {
   user       = aws_iam_user.candidate_user.name
