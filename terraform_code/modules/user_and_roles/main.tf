@@ -296,53 +296,49 @@ resource "aws_iam_user_policy_attachment" "attach_ec2_policy" {
 
 resource "aws_iam_policy" "rds_policy" {
   name        = "CyberArkCandidateRDSPolicy"
-  description = "Candidate RDS policy"
+  description = "Allow full RDS admin, but CreateDBInstance only for MySQL + small instance"
 
-  policy = jsonencode(
-    {
-      "Version" : "2012-10-17",
-      "Statement" : [
-        {
-          "Sid" : "AllowRDSCreateMySQLSpecificSize",
-          "Effect" : "Allow",
-          "Action" : "rds:CreateDBInstance",
-          "Resource" : "*",
-          "Condition" : {
-            "StringEquals" : {
-              "rds:Engine" : "mysql",
-              "rds:DBInstanceClass" : "db.t4g.micro"
-            }
-          }
-        },
-        {
-          "Sid" : "AllowRDSAdminForMySQL",
-          "Effect" : "Allow",
-          "Action" : [
-            "rds:ModifyDBInstance",
-            "rds:DeleteDBInstance",
-            "rds:Describe*",
-            "rds:RebootDBInstance",
-            "rds:StopDBInstance",
-            "rds:StartDBInstance"
-          ],
-          "Resource" : "*"
-        },
-        {
-          "Sid" : "DenyOtherDBInstanceClassOrEngine",
-          "Effect" : "Deny",
-          "Action" : "rds:CreateDBInstance",
-          "Resource" : "*",
-          "Condition" : {
-            "StringNotEquals" : {
-              "rds:Engine" : "mysql",
-              "rds:DBInstanceClass" : "db.t4g.micro"
-            }
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+
+      # 1) Allow everything RDS
+      {
+        Sid      = "AllowAllRDSActions",
+        Effect   = "Allow",
+        Action   = "rds:*",
+        Resource = "*"
+      },
+
+      # 2) Deny CreateDBInstance unless engine = mysql
+      {
+        Sid      = "DenyCreateNonMySQLEngine",
+        Effect   = "Deny",
+        Action   = "rds:CreateDBInstance",
+        Resource = "*",
+        Condition = {
+          StringNotEquals = {
+            "rds:Engine" = "mysql"
           }
         }
-      ]
-    }
-  )
+      },
+
+      # 3) Deny CreateDBInstance unless class = db.t4g.micro
+      {
+        Sid      = "DenyCreateNonSmallClass",
+        Effect   = "Deny",
+        Action   = "rds:CreateDBInstance",
+        Resource = "*",
+        Condition = {
+          StringNotEquals = {
+            "rds:DBInstanceClass" = "db.t4g.micro"
+          }
+        }
+      }
+    ]
+  })
 }
+
 
 resource "aws_iam_user_policy_attachment" "attach_cyberark_rds_candidate_policy" {
   user       = aws_iam_user.candidate_user.name
