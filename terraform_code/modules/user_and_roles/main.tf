@@ -365,60 +365,12 @@ resource "aws_iam_policy" "aws_sm_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-
-      # 0) Allow creating new secrets (must be "*" since the secret ARN doesn't exist yet)
       {
-        Sid      = "AllowCreateSecret",
         Effect   = "Allow",
-        Action   = "secretsmanager:CreateSecret",
-        Resource = "*",
-        # Optional condition to restrict by name prefix:
-        # Condition = {
-        #   StringLike = { "secretsmanager:Name" = "tech-challenge/*" }
-        # }
+        Action   = "secretsmanager:*",
+        Resource = "*"
       },
-
-      # 1) Now lock down all lifecycle operations to your account’s secret ARNs
-      {
-        Effect = "Allow",
-        Action = [
-          "secretsmanager:PutSecretValue",
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:UpdateSecret",
-          "secretsmanager:DeleteSecret",
-          "secretsmanager:RestoreSecret",
-          "secretsmanager:DescribeSecret",
-          "secretsmanager:ListSecrets",
-          "secretsmanager:GetRandomPassword",
-          "secretsmanager:ReplicateSecretToRegions",
-          "secretsmanager:CancelRotateSecret",
-          "secretsmanager:RotateSecret"
-        ],
-        Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
-      },
-
-      # 2) Resource policy management
-      {
-        Effect = "Allow",
-        Action = [
-          "secretsmanager:PutResourcePolicy",
-          "secretsmanager:GetResourcePolicy",
-          "secretsmanager:ValidateResourcePolicy"
-        ],
-        Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
-      },
-
-      # 3) Tagging
-      {
-        Effect = "Allow",
-        Action = [
-          "secretsmanager:TagResource",
-          "secretsmanager:UntagResource"
-        ],
-        Resource = "arn:aws:secretsmanager:${data.aws_caller_identity.current.account_id}:secret:*"
-      },
-
-      # 4) KMS support
+      #KMS support
       {
         Effect = "Allow",
         Action = [
