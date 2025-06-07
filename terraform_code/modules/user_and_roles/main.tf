@@ -22,20 +22,30 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
+
+      # 1) Allow password change + MFA setup APIs (no MFA needed yet)
       {
-        Sid    = "AllowChangeOwnPasswordWithoutMFA",
+        Sid    = "AllowPasswordChangeAndMFASetupWithoutMFA",
         Effect = "Allow",
         Action = [
           "iam:ChangePassword",
-          "iam:GetAccountPasswordPolicy"
+          "iam:GetAccountPasswordPolicy",
+          "iam:CreateVirtualMFADevice",
+          "iam:EnableMFADevice",
+          "iam:ListMFADevices",
+          "iam:ResyncMFADevice",
+          "iam:DeleteVirtualMFADevice",
+          "iam:GetUser"
         ],
         Resource = [
-          "arn:aws:iam::*:user/${"$"}{aws:username}",
-          "arn:aws:iam::*:user/*/${"$"}{aws:username}"
+          "arn:aws:iam::*:user/$${aws:username}",
+          "arn:aws:iam::*:mfa/$${aws:username}"
         ]
       },
+
+      # 2) Once MFA is present, allow everything
       {
-        Sid    = "AllowAllActionsWithMFA",
+        Sid    = "AllowAllWithMFA",
         Effect = "Allow",
         Action = "*",
         Resource = "*",
@@ -45,11 +55,22 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           }
         }
       },
+
+      # 3) Deny all OTHER actions if MFA is NOT present
       {
-        Sid    = "DenyAllWithoutMFA",
-        Effect = "Deny",
-        Action = "*",
-        Resource = "*",
+        Sid       = "DenyAllExceptPasswordAndMFASetupIfNoMFA",
+        Effect    = "Deny",
+        NotAction = [
+          "iam:ChangePassword",
+          "iam:GetAccountPasswordPolicy",
+          "iam:CreateVirtualMFADevice",
+          "iam:EnableMFADevice",
+          "iam:ListMFADevices",
+          "iam:ResyncMFADevice",
+          "iam:DeleteVirtualMFADevice",
+          "iam:GetUser"
+        ],
+        Resource  = "*",
         Condition = {
           BoolIfExists = {
             "aws:MultiFactorAuthPresent" = "false"
@@ -59,6 +80,7 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     ]
   })
 }
+
 
 
 resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
