@@ -318,7 +318,7 @@ resource "aws_iam_policy" "rds_policy" {
         Resource = "*",
         Condition = {
           StringNotEquals = {
-            "rds:Engine" = "mysql"
+            "rds:DatabaseEngine" = "mysql"
           }
         }
       },
@@ -331,7 +331,7 @@ resource "aws_iam_policy" "rds_policy" {
         Resource = "*",
         Condition = {
           StringNotEquals = {
-            "rds:DBInstanceClass" = "db.t4g.micro"
+            "rds:DatabaseClass" = "db.t4g.micro"
           }
         }
       }
