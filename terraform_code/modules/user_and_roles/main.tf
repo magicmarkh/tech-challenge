@@ -23,7 +23,8 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     Version = "2012-10-17",
     Statement = [
 
-      # 1) Allow password change + MFA setup APIs (no MFA needed yet)
+      # 1) Pre-MFA: allow exactly these calls so the user can reset their password and
+      #    register an MFA device on first login.
       {
         Sid    = "AllowPasswordChangeAndMFASetupWithoutMFA",
         Effect = "Allow",
@@ -39,24 +40,12 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
         ],
         Resource = [
           "arn:aws:iam::*:user/$${aws:username}",
+          "arn:aws:iam::*:user/*/$${aws:username}",
           "arn:aws:iam::*:mfa/$${aws:username}"
         ]
       },
 
-      # 2) Once MFA is present, allow everything
-      {
-        Sid    = "AllowAllWithMFA",
-        Effect = "Allow",
-        Action = "*",
-        Resource = "*",
-        Condition = {
-          Bool = {
-            "aws:MultiFactorAuthPresent" = "true"
-          }
-        }
-      },
-
-      # 3) Deny all OTHER actions if MFA is NOT present
+      # 2) Pre-MFA: deny absolutely everything else not in the list above
       {
         Sid       = "DenyAllExceptPasswordAndMFASetupIfNoMFA",
         Effect    = "Deny",
@@ -77,9 +66,13 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           }
         }
       }
+
+      # <-- no "Allow * with MFA" here.  Once MFA = true, this inline policy has
+      #     no denies, so your other attached policies will control access.
     ]
   })
 }
+
 
 
 
