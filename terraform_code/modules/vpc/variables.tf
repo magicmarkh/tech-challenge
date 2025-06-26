@@ -12,6 +12,20 @@ variable "private_subnet_cidr" {
   type = string
 }
 
+
+variable "public_subnet_az" {
+  description = "AWS identifier for the private subnet AZ"
+  default = "us-east-2a"
+  type = string
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for your private subnet"
+  default = "192.168.50.0/24"
+  type = string
+}
+
+
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
