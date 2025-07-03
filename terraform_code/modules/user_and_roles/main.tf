@@ -47,8 +47,8 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
 
       # 2) Pre-MFA: deny absolutely everything else not in the list above
       {
-        Sid       = "DenyAllExceptPasswordAndMFASetupIfNoMFA",
-        Effect    = "Deny",
+        Sid    = "DenyAllExceptPasswordAndMFASetupIfNoMFA",
+        Effect = "Deny",
         NotAction = [
           "iam:ChangePassword",
           "iam:GetAccountPasswordPolicy",
@@ -59,7 +59,7 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           "iam:DeleteVirtualMFADevice",
           "iam:GetUser"
         ],
-        Resource  = "*",
+        Resource = "*",
         Condition = {
           BoolIfExists = {
             "aws:MultiFactorAuthPresent" = "false"
@@ -97,6 +97,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "iam:GetRolePolicy",
           "iam:ListAttachedRolePolicies",
           "iam:ListMFADevices",
+          "iam:ListInstanceProfiles",
           "iam:ListInstanceProfilesForRole",
           "iam:ListPolicies",
           "iam:ListRolePolicies",
@@ -109,6 +110,9 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "iam:GetRole",
           "iam:GetRolePolicy",
           "iam:TagRole",
+          "iam:CreateInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:PassRole",
           "sns:Publish",
           "sns:ListTopics",
           "kms:GenerateDataKey",
@@ -126,7 +130,7 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "s3:GetObjectVersionForReplication",
           "s3:GetObjectVersionTagging",
           "s3:GetObjectVersionTorrent",
-          "s3:ListBuckets",
+          "s3:ListAllMyBuckets",
           "s3:ListBucketVersions",
           "s3:ListMultipartUploadParts",
           "s3:ObjectOwnerOverrideToBucketOwner",
@@ -182,6 +186,19 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
         Condition : {
           "StringLike" : {
             "iam:PolicyArn" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CyberArkPolicyForCEM*"
+          }
+        }
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : "iam:AttachRolePolicy",
+        "Resource" : "arn:aws:iam::246233007940:role/*",
+        "Condition" : {
+          "StringLike" : {
+            "iam:PolicyArn" : [
+              "arn:aws:iam::aws:policy/*",
+              "arn:aws:iam::246233007940:policy/*"
+            ]
           }
         }
       },
@@ -268,7 +285,7 @@ resource "aws_iam_policy" "ec2_policy" {
         Action   = "cloudwatch:DescribeAlarms",
         Resource = "*"
       },
-     #require samll image sizes
+      #require samll image sizes
       {
         Sid    = "DenyRunInstancesUnlessSmall",
         Effect = "Deny",
@@ -342,9 +359,9 @@ resource "aws_iam_policy" "rds_policy" {
 
       # 4) Allow RDS to create its service‐linked role
       {
-        Sid    = "AllowCreateRDSServiceLinkedRole",
-        Effect = "Allow",
-        Action = "iam:CreateServiceLinkedRole",
+        Sid      = "AllowCreateRDSServiceLinkedRole",
+        Effect   = "Allow",
+        Action   = "iam:CreateServiceLinkedRole",
         Resource = "*",
         Condition = {
           StringEquals = {
@@ -403,7 +420,7 @@ resource "aws_iam_account_password_policy" "default" {
   minimum_password_length        = 14
   require_symbols                = true
   require_numbers                = true
-  require_uppercase_characters  = true
-  require_lowercase_characters  = true
+  require_uppercase_characters   = true
+  require_lowercase_characters   = true
   allow_users_to_change_password = true
 }
