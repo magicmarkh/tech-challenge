@@ -192,12 +192,12 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
       {
         "Effect" : "Allow",
         "Action" : "iam:AttachRolePolicy",
-        "Resource" : "arn:aws:iam::246233007940:role/*",
+        "Resource" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*",
         "Condition" : {
           "StringLike" : {
             "iam:PolicyArn" : [
               "arn:aws:iam::aws:policy/*",
-              "arn:aws:iam::246233007940:policy/*"
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
             ]
           }
         }
