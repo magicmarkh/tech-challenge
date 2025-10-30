@@ -23,26 +23,42 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
     Version = "2012-10-17",
     Statement = [
 
-      # 1) Pre-MFA: allow exactly these calls so the user can reset their password and
-      #    register an MFA device on first login.
+      # 1) Pre-MFA: allow password and basic account operations
       {
         Sid    = "AllowPasswordChangeAndMFASetupWithoutMFA",
         Effect = "Allow",
         Action = [
           "iam:ChangePassword",
           "iam:GetAccountPasswordPolicy",
-          "iam:CreateVirtualMFADevice",
-          "iam:EnableMFADevice",
           "iam:ListMFADevices",
-          "iam:ResyncMFADevice",
-          "iam:DeleteVirtualMFADevice",
           "iam:GetUser"
         ],
         Resource = [
           "arn:aws:iam::*:user/$${aws:username}",
-          "arn:aws:iam::*:user/*/$${aws:username}",
-          "arn:aws:iam::*:mfa/$${aws:username}"
+          "arn:aws:iam::*:user/*/$${aws:username}"
         ]
+      },
+
+      # 1b) Allow creating any virtual MFA device (user can name it whatever they want)
+      {
+        Sid    = "AllowCreateVirtualMFADevice",
+        Effect = "Allow",
+        Action = [
+          "iam:CreateVirtualMFADevice"
+        ],
+        Resource = "arn:aws:iam::*:mfa/*"
+      },
+
+      # 1c) Allow managing only the user's own MFA devices (enable, resync, delete)
+      {
+        Sid    = "AllowMFADeviceManagement",
+        Effect = "Allow",
+        Action = [
+          "iam:EnableMFADevice",
+          "iam:ResyncMFADevice",
+          "iam:DeleteVirtualMFADevice"
+        ],
+        Resource = "arn:aws:iam::*:mfa/$${aws:username}"
       },
 
       # 2) Pre-MFA: deny absolutely everything else not in the list above
@@ -68,7 +84,7 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
       }
 
       # <-- no "Allow * with MFA" here.  Once MFA = true, this inline policy has
-      #     no denies, so your other attached policies will control access.
+      #     no denies, so other attached policies will control access.
     ]
   })
 }
