@@ -251,9 +251,11 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "cloudformation:CreateUploadBucket",
           "cloudformation:CreateChangeSet",
           "cloudformation:DescribeChangeSet",
+          "cloudformation:DescribeEvents",
           "cloudformation:DescribeStackEvents",
           "cloudformation:DescribeStacks",
           "cloudformation:DescribeStackSetOperation",
+          "cloudformation:ExecuteChangeSet",
           "cloudformation:GetTemplateSummary",
           "cloudformation:ListStacks",
           "cloudformation:ListStackResources",
@@ -262,7 +264,8 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
           "cloudformation:DeleteStack",
           "cloudformation:DeleteStackInstances",
           "cloudformation:DeleteStackSet",
-          "cloudformation:DescribeStackSet"
+          "cloudformation:DescribeStackSet",
+          "cloudformation:ValidateTemplate"
         ],
         Resource = "*"
       },
