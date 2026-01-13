@@ -31,6 +31,8 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           "iam:ChangePassword",
           "iam:GetAccountPasswordPolicy",
           "iam:ListMFADevices",
+          "iam:ListVirtualMFADevices",
+          "iam:EnableMFADevice",
           "iam:GetUser"
         ],
         Resource = [
@@ -71,6 +73,7 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           "iam:CreateVirtualMFADevice",
           "iam:EnableMFADevice",
           "iam:ListMFADevices",
+          "iam:ListVirtualMFADevices",
           "iam:ResyncMFADevice",
           "iam:DeleteVirtualMFADevice",
           "iam:GetUser"
