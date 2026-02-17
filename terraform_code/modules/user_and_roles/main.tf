@@ -4,9 +4,12 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
+# ============================================
+# IAM User - candidate_user
+# ============================================
+
 resource "aws_iam_user" "candidate_user" {
   name = "candidate_user"
-
 }
 
 resource "aws_iam_user_login_profile" "console_user_login" {
@@ -15,6 +18,10 @@ resource "aws_iam_user_login_profile" "console_user_login" {
   password_reset_required = true
 }
 
+# ============================================
+# Inline Policy: RequireMFA (UNCHANGED - Works Great!)
+# ============================================
+
 resource "aws_iam_user_policy" "require_mfa_policy" {
   name = "RequireMFA"
   user = aws_iam_user.candidate_user.name
@@ -22,8 +29,6 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-
-      # 1) Pre-MFA: allow password and basic account operations
       {
         Sid    = "AllowPasswordChangeAndMFASetupWithoutMFA",
         Effect = "Allow",
@@ -40,8 +45,6 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           "arn:aws:iam::*:user/*/$${aws:username}"
         ]
       },
-
-      # 1b) Allow creating any virtual MFA device (user can name it whatever they want)
       {
         Sid    = "AllowCreateVirtualMFADevice",
         Effect = "Allow",
@@ -50,8 +53,6 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
         ],
         Resource = "arn:aws:iam::*:mfa/*"
       },
-
-      # 1c) Allow managing only the user's own MFA devices (enable, resync, delete)
       {
         Sid    = "AllowMFADeviceManagement",
         Effect = "Allow",
@@ -62,8 +63,6 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
         ],
         Resource = "arn:aws:iam::*:mfa/$${aws:username}"
       },
-
-      # 2) Pre-MFA: deny absolutely everything else not in the list above
       {
         Sid    = "DenyAllExceptPasswordAndMFASetupIfNoMFA",
         Effect = "Deny",
@@ -85,191 +84,183 @@ resource "aws_iam_user_policy" "require_mfa_policy" {
           }
         }
       }
-
-      # <-- no "Allow * with MFA" here.  Once MFA = true, this inline policy has
-      #     no denies, so other attached policies will control access.
     ]
   })
 }
 
+# ============================================
+# NEW: Consolidated Operational Policy
+# Replaces: CyberArkSCAACandidatePolicy + parts of EC2/RDS/SM policies
+# ============================================
 
-
-
-resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
-  name        = "CyberArkSCAACandidatePolicy"
-  description = "Permissions required for CyberArk Cloud Visibility admin user"
+resource "aws_iam_policy" "operational_policy" {
+  name        = "CyberArkCandidate-Operational"
+  description = "Consolidated operational permissions for CyberArk candidate testing"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
+      # Password management (allow with or without MFA for initial setup)
       {
+        Sid    = "AllowPasswordAndAccountInfo",
         Effect = "Allow",
         Action = [
-          "access-analyzer:ValidatePolicy",
-          "iam:CreateServiceLinkedRole",
-          "iam:GenerateCredentialReport",
-          "iam:GetAccountAuthorizationDetails",
-          "iam:GetCredentialReport",
+          "iam:ChangePassword",
+          "iam:GetUser",
+          "iam:GetAccountPasswordPolicy"
+        ],
+        Resource = "*"
+      },
+      
+      # EC2 - Full access (limited by cost control policy)
+      {
+        Sid      = "AllowEC2Operations",
+        Effect   = "Allow",
+        Action   = "ec2:*",
+        Resource = "*"
+      },
+      
+      # RDS - Full access (limited by cost control policy)
+      {
+        Sid      = "AllowRDSOperations",
+        Effect   = "Allow",
+        Action   = "rds:*",
+        Resource = "*"
+      },
+      
+      # Secrets Manager + KMS
+      {
+        Sid    = "AllowSecretsManager",
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:*",
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:GenerateDataKey",
+          "kms:ListAliases"
+        ],
+        Resource = "*"
+      },
+      
+      # S3 Operations
+      {
+        Sid    = "AllowS3Operations",
+        Effect = "Allow",
+        Action = [
+          "s3:*"
+        ],
+        Resource = "*"
+      },
+      
+      # CloudFormation
+      {
+        Sid    = "AllowCloudFormation",
+        Effect = "Allow",
+        Action = [
+          "cloudformation:*"
+        ],
+        Resource = "*"
+      },
+      
+      # IAM for CyberArk deployments
+      {
+        Sid    = "AllowIAMForCyberArk",
+        Effect = "Allow",
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:UpdateRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:ListRoles",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
           "iam:GetPolicy",
           "iam:GetPolicyVersion",
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:ListAttachedRolePolicies",
-          "iam:ListMFADevices",
+          "iam:ListPolicies",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:GetInstanceProfile",
           "iam:ListInstanceProfiles",
           "iam:ListInstanceProfilesForRole",
-          "iam:ListPolicies",
-          "iam:ListRolePolicies",
-          "iam:ListRoles",
-          "iam:ListVirtualMFADevices",
-          "iam:DeleteRole",
-          "iam:DeleteRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:CreateRole",
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:TagRole",
-          "iam:CreateInstanceProfile",
-          "iam:AddRoleToInstanceProfile",
           "iam:PassRole",
-          "sns:Publish",
-          "sns:ListTopics",
-          "kms:GenerateDataKey",
-          "kms:Decrypt",
-          "s3:BypassGovernanceRetention",
-          "s3:CreateBucket",
-          "s3:DeleteObjectTagging",
-          "s3:DeleteObjectVersion",
-          "s3:DeleteObjectVersionTagging",
-          "s3:GetBucketPolicy",
-          "s3:GetObject",
-          "s3:GetObjectLegalHold",
-          "s3:GetObjectVersion",
-          "s3:GetObjectVersionAcl",
-          "s3:GetObjectVersionForReplication",
-          "s3:GetObjectVersionTagging",
-          "s3:GetObjectVersionTorrent",
-          "s3:ListAllMyBuckets",
-          "s3:ListBucketVersions",
-          "s3:ListMultipartUploadParts",
-          "s3:ObjectOwnerOverrideToBucketOwner",
-          "s3:PutObject",
-          "s3:PutBucketPolicy",
-          "s3:PutBucketPublicAccessBlock",
-          "s3:PutEncryptionConfiguration",
-          "s3:PutLifecycleConfiguration",
-          "s3:PutObjectLegalHold",
-          "s3:PutObjectRetention",
-          "s3:PutObjectVersionAcl",
-          "s3:PutObjectVersionTagging",
-          "s3:ReplicateDelete",
-          "s3:ReplicateObject",
-          "s3:ReplicateTags",
-          "s3:DeleteBucket",
-          "s3:DeleteBucketPolicy",
-          "s3:DeleteObject",
-          "s3:ListAllMyBuckets",
-          "events:DescribeRule",
-          "events:PutRule",
-          "events:PutTargets",
-          "events:RemoveTargets"
+          "iam:CreateServiceLinkedRole",
+          "iam:TagRole",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:GetAccountAuthorizationDetails",
+          "iam:GenerateCredentialReport",
+          "iam:GetCredentialReport",
+          "iam:ListMFADevices",
+          "iam:ListVirtualMFADevices",
+          "access-analyzer:ValidatePolicy"
         ],
         Resource = "*"
       },
+      
+      # Lambda
       {
+        Sid    = "AllowLambda",
         Effect = "Allow",
         Action = [
-          "iam:AttachRolePolicy"
-        ],
-        Resource : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkRoleSCA*",
-        Condition : {
-          "StringLike" : {
-            "iam:PolicyArn" : [
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CyberarkIAMAccountPermissionsPolicyForSCA*",
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CyberArkPolicyAccountForSCA*"
-            ]
-          }
-        }
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : "iam:PutRolePolicy",
-        "Resource" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkRoleSCA*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "iam:AttachRolePolicy"
-        ],
-        Resource : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkRoleForCEM*",
-        Condition : {
-          "StringLike" : {
-            "iam:PolicyArn" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CyberArkPolicyForCEM*"
-          }
-        }
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : "iam:AttachRolePolicy",
-        "Resource" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*",
-        "Condition" : {
-          "StringLike" : {
-            "iam:PolicyArn" : [
-              "arn:aws:iam::aws:policy/*",
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
-            ]
-          }
-        }
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : "iam:PutRolePolicy",
-        "Resource" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkRoleForCEM*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "iam:AttachRolePolicy"
-        ],
-        Resource : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkDynamicPrivilegedAccess*",
-        Condition : {
-          "StringLike" : {
-            "iam:PolicyArn" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/CyberarkJitAccountProvisioningPolicy*"
-          }
-        }
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : "iam:PutRolePolicy",
-        "Resource" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/CyberArkDynamicPrivilegedAccess*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "cloudformation:CreateStack",
-          "cloudformation:CreateStackInstances",
-          "cloudformation:CreateUploadBucket",
-          "cloudformation:CreateChangeSet",
-          "cloudformation:DescribeChangeSet",
-          "cloudformation:DescribeEvents",
-          "cloudformation:DescribeStackEvents",
-          "cloudformation:DescribeStacks",
-          "cloudformation:DescribeStackSetOperation",
-          "cloudformation:ExecuteChangeSet",
-          "cloudformation:GetTemplateSummary",
-          "cloudformation:ListStacks",
-          "cloudformation:ListStackResources",
-          "cloudformation:TagResource",
-          "cloudformation:UpdateStack",
-          "cloudformation:DeleteStack",
-          "cloudformation:DeleteStackInstances",
-          "cloudformation:DeleteStackSet",
-          "cloudformation:DescribeStackSet",
-          "cloudformation:ValidateTemplate"
+          "lambda:*"
         ],
         Resource = "*"
       },
+      
+      # Logging and Monitoring
       {
+        Sid    = "AllowLogging",
+        Effect = "Allow",
+        Action = [
+          "logs:*",
+          "cloudtrail:LookupEvents",
+          "cloudtrail:DescribeTrails",
+          "cloudtrail:GetTrailStatus",
+          "cloudwatch:*"
+        ],
+        Resource = "*"
+      },
+      
+      # EventBridge
+      {
+        Sid    = "AllowEventBridge",
+        Effect = "Allow",
+        Action = [
+          "events:*"
+        ],
+        Resource = "*"
+      },
+      
+      # SNS
+      {
+        Sid    = "AllowSNS",
+        Effect = "Allow",
+        Action = [
+          "sns:*"
+        ],
+        Resource = "*"
+      },
+      
+      # ELB and AutoScaling
+      {
+        Sid    = "AllowELBAndAutoScaling",
+        Effect = "Allow",
+        Action = [
+          "elasticloadbalancing:*",
+          "autoscaling:*"
+        ],
+        Resource = "*"
+      },
+      
+      # STS
+      {
+        Sid    = "AllowSTSGetCallerIdentity",
         Effect = "Allow",
         Action = [
           "sts:GetCallerIdentity"
@@ -280,145 +271,121 @@ resource "aws_iam_policy" "cyberark_sca_candidate_policy" {
   })
 }
 
-resource "aws_iam_user_policy_attachment" "attach_cyberark_sca_candidate_policy" {
+resource "aws_iam_user_policy_attachment" "attach_operational_policy" {
   user       = aws_iam_user.candidate_user.name
-  policy_arn = aws_iam_policy.cyberark_sca_candidate_policy.arn
+  policy_arn = aws_iam_policy.operational_policy.arn
 }
 
-resource "aws_iam_policy" "ec2_policy" {
-  name        = "CyberArkCandidateEC2Policy"
-  description = "Candidate EC2 policy"
+# ============================================
+# NEW: Cost Control Policy
+# Prevents expensive mistakes and security issues
+# ============================================
+
+resource "aws_iam_policy" "cost_control_policy" {
+  name        = "CyberArkCandidate-CostControl"
+  description = "Cost control and security guardrails for CyberArk candidates"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-
-      #allow everything in EC2
+      # Region restrictions
       {
-        Sid      = "AllowAllEC2Actions",
-        Effect   = "Allow",
-        Action   = "ec2:*",
-        Resource = "*"
-      },
-      #allow cloudwatch alarms
-      {
-        Sid      = "AllowCloudwatchAlarm",
-        Effect   = "Allow",
-        Action   = "cloudwatch:DescribeAlarms",
-        Resource = "*"
-      },
-      #require samll image sizes
-      {
-        Sid    = "DenyRunInstancesUnlessSmall",
-        Effect = "Deny",
-        Action = "ec2:RunInstances",
-        Resource = [
-          "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/*",
-          "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:image/*"
-        ],
+        Sid      = "RestrictRegions",
+        Effect   = "Deny",
+        Action   = "*",
+        Resource = "*",
         Condition = {
           StringNotEquals = {
+            "aws:RequestedRegion" = [
+              "us-east-1",
+              "us-east-2"
+            ]
+          }
+        }
+      },
+      
+      # EC2 instance type restrictions (FIXED LOGIC!)
+      {
+        Sid      = "RestrictEC2InstanceTypes",
+        Effect   = "Deny",
+        Action   = "ec2:RunInstances",
+        Resource = "arn:aws:ec2:*:*:instance/*",
+        Condition = {
+          StringNotLike = {
             "ec2:InstanceType" = [
+              "t3.micro",
+              "t3.small",
+              "t3.medium",
+              "t3a.micro",
+              "t3a.small",
               "t3a.medium",
               "t3a.large"
             ]
           }
         }
-      }
-
-    ]
-  })
-}
-
-
-resource "aws_iam_user_policy_attachment" "attach_ec2_policy" {
-  user       = aws_iam_user.candidate_user.name
-  policy_arn = aws_iam_policy.ec2_policy.arn
-}
-
-
-resource "aws_iam_policy" "rds_policy" {
-  name        = "CyberArkCandidateRDSPolicy"
-  description = "Allow full RDS admin, but CreateDBInstance only for MySQL + small instance"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-
-      # 1) Allow everything RDS
-      {
-        Sid      = "AllowAllRDSActions",
-        Effect   = "Allow",
-        Action   = "rds:*",
-        Resource = "*"
       },
-
-      # 2) Deny CreateDBInstance unless engine = mysql
+      
+      # RDS instance class restrictions (IMPROVED!)
       {
-        Sid      = "DenyCreateNonMySQLEngine",
+        Sid      = "RestrictRDSInstanceTypes",
         Effect   = "Deny",
         Action   = "rds:CreateDBInstance",
-        Resource = "*",
+        Resource = "arn:aws:rds:*:*:db:*",
         Condition = {
-          StringNotEquals = {
-            "rds:DatabaseEngine" = "mysql"
+          StringNotLike = {
+            "rds:DatabaseClass" = [
+              "db.t3.micro",
+              "db.t4g.micro",
+              "db.t3.small",
+              "db.t4g.small"
+            ]
           }
         }
       },
-
-      # 3) Deny CreateDBInstance unless class = db.t4g.micro
+      
+      # RDS engine restrictions (allow MySQL and PostgreSQL)
       {
-        Sid      = "DenyCreateNonSmallClass",
+        Sid      = "RestrictRDSEngines",
         Effect   = "Deny",
         Action   = "rds:CreateDBInstance",
-        Resource = "*",
+        Resource = "arn:aws:rds:*:*:db:*",
         Condition = {
-          StringNotEquals = {
-            "rds:DatabaseClass" = "db.t4g.micro"
+          StringNotLike = {
+            "rds:DatabaseEngine" = [
+              "mysql",
+              "postgres"
+            ]
           }
         }
       },
-
-      # 4) Allow RDS to create its service‐linked role
+      
+      # Prevent account-level modifications
       {
-        Sid      = "AllowCreateRDSServiceLinkedRole",
-        Effect   = "Allow",
-        Action   = "iam:CreateServiceLinkedRole",
-        Resource = "*",
-        Condition = {
-          StringEquals = {
-            "iam:AWSServiceName" = "rds.amazonaws.com"
-          }
-        }
-      }
-    ]
-  })
-}
-
-
-resource "aws_iam_user_policy_attachment" "attach_cyberark_rds_candidate_policy" {
-  user       = aws_iam_user.candidate_user.name
-  policy_arn = aws_iam_policy.rds_policy.arn
-}
-
-resource "aws_iam_policy" "aws_sm_policy" {
-  name        = "CyberArkCandidateAWSSMPolicy"
-  description = "Least-privilege policy for full Secrets Manager administration"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = "secretsmanager:*",
-        Resource = "*"
-      },
-      #KMS support
-      {
-        Effect = "Allow",
+        Sid    = "PreventAccountModification",
+        Effect = "Deny",
         Action = [
-          "kms:DescribeKey",
-          "kms:ListAliases"
+          "iam:CreateUser",
+          "iam:DeleteUser",
+          "iam:CreateAccessKey",
+          "iam:DeleteAccessKey",
+          "iam:UpdateAccountPasswordPolicy",
+          "iam:DeleteAccountPasswordPolicy",
+          "organizations:*",
+          "account:*"
+        ],
+        Resource = "*"
+      },
+      
+      # Prevent billing access
+      {
+        Sid    = "PreventBillingAccess",
+        Effect = "Deny",
+        Action = [
+          "aws-portal:*",
+          "budgets:*",
+          "ce:*",
+          "cur:*",
+          "purchase-orders:*"
         ],
         Resource = "*"
       }
@@ -426,17 +393,23 @@ resource "aws_iam_policy" "aws_sm_policy" {
   })
 }
 
-
-resource "aws_iam_user_policy_attachment" "attach_cyberark_aws_sm_candidate_policy" {
+resource "aws_iam_user_policy_attachment" "attach_cost_control_policy" {
   user       = aws_iam_user.candidate_user.name
-  policy_arn = aws_iam_policy.aws_sm_policy.arn
+  policy_arn = aws_iam_policy.cost_control_policy.arn
 }
+
+# ============================================
+# AWS Managed Policy: IAMUserChangePassword
+# ============================================
 
 resource "aws_iam_user_policy_attachment" "allow_user_password_change" {
   user       = aws_iam_user.candidate_user.name
   policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
 }
 
+# ============================================
+# Account Password Policy
+# ============================================
 
 resource "aws_iam_account_password_policy" "default" {
   minimum_password_length        = 14
